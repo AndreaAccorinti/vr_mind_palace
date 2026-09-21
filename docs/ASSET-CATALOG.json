@@ -1,0 +1,19 @@
+{
+  "catalogVersion": 1,
+  "status": "Procedural recipes to implement; no external model files are included.",
+  "assets": [
+    {"id": "builtin:plate-stack", "description": "Three large colored plates stacked vertically; the top plate can lift to illustrate last-in, first-out."},
+    {"id": "builtin:queue", "description": "Three visibly ordered simple figures at a gate; the first figure can move through first."},
+    {"id": "builtin:water-jug", "description": "A large blue water jug with a simple water surface."},
+    {"id": "builtin:teacup", "description": "A large teacup, useful for an approved tea peg."},
+    {"id": "builtin:cube", "description": "A large colored cube with a strong silhouette."},
+    {"id": "builtin:tree", "description": "A stylized low-polygon tree."},
+    {"id": "builtin:door", "description": "A freestanding door and frame."},
+    {"id": "builtin:placeholder", "description": "A neutral marked plinth for a missing visual. The editor explains what should replace it."}
+  ],
+  "animations": ["none", "bob", "pulse", "lift-top", "advance-front"],
+  "animationCompatibility": {
+    "lift-top": ["builtin:plate-stack"],
+    "advance-front": ["builtin:queue"]
+  }
+}

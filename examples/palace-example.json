@@ -1,0 +1,244 @@
+{
+  "schemaVersion": 1,
+  "kind": "loci-content",
+  "palace": {
+    "id": "palace-demo",
+    "name": "First learning palace",
+    "roomOrder": [
+      "room-lobby",
+      "room-study",
+      "room-garden"
+    ]
+  },
+  "rooms": [
+    {
+      "id": "room-lobby",
+      "name": "Lobby",
+      "templateId": "gallery-6x6",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "yawDegrees": 0,
+      "theme": "warm-stone",
+      "locusOrder": [
+        "room-lobby-locus-1",
+        "room-lobby-locus-2",
+        "room-lobby-locus-3"
+      ]
+    },
+    {
+      "id": "room-study",
+      "name": "Study",
+      "templateId": "gallery-6x6",
+      "origin": [
+        8,
+        0,
+        0
+      ],
+      "yawDegrees": 0,
+      "theme": "ink-blue",
+      "locusOrder": [
+        "room-study-locus-1",
+        "room-study-locus-2",
+        "room-study-locus-3"
+      ]
+    },
+    {
+      "id": "room-garden",
+      "name": "Garden gallery",
+      "templateId": "gallery-6x6",
+      "origin": [
+        16,
+        0,
+        0
+      ],
+      "yawDegrees": 0,
+      "theme": "garden",
+      "locusOrder": [
+        "room-garden-locus-1",
+        "room-garden-locus-2"
+      ]
+    }
+  ],
+  "loci": [
+    {
+      "id": "room-lobby-locus-1",
+      "roomId": "room-lobby",
+      "label": "Door plinth",
+      "position": [
+        -2,
+        0,
+        -2
+      ],
+      "yawDegrees": 0
+    },
+    {
+      "id": "room-lobby-locus-2",
+      "roomId": "room-lobby",
+      "label": "Window plinth",
+      "position": [
+        0,
+        0,
+        -2
+      ],
+      "yawDegrees": 0
+    },
+    {
+      "id": "room-lobby-locus-3",
+      "roomId": "room-lobby",
+      "label": "Corner plinth",
+      "position": [
+        2,
+        0,
+        -2
+      ],
+      "yawDegrees": 0
+    },
+    {
+      "id": "room-study-locus-1",
+      "roomId": "room-study",
+      "label": "Desk plinth",
+      "position": [
+        -2,
+        0,
+        -2
+      ],
+      "yawDegrees": 0
+    },
+    {
+      "id": "room-study-locus-2",
+      "roomId": "room-study",
+      "label": "Bookshelf plinth",
+      "position": [
+        0,
+        0,
+        -2
+      ],
+      "yawDegrees": 0
+    },
+    {
+      "id": "room-study-locus-3",
+      "roomId": "room-study",
+      "label": "Arch plinth",
+      "position": [
+        2,
+        0,
+        -2
+      ],
+      "yawDegrees": 0
+    },
+    {
+      "id": "room-garden-locus-1",
+      "roomId": "room-garden",
+      "label": "Tree plinth",
+      "position": [
+        -2,
+        0,
+        -2
+      ],
+      "yawDegrees": 0
+    },
+    {
+      "id": "room-garden-locus-2",
+      "roomId": "room-garden",
+      "label": "Fountain plinth",
+      "position": [
+        0,
+        0,
+        -2
+      ],
+      "yawDegrees": 0
+    }
+  ],
+  "items": [
+    {
+      "id": "item-stack",
+      "locusId": "room-lobby-locus-1",
+      "cue": "Which removal order does a stack follow?",
+      "answer": "Last in, first out (LIFO).",
+      "source": {
+        "kind": "demo",
+        "excerpt": "A stack removes the most recently added item first: last in, first out.",
+        "locator": "Synthetic public demo, not imported user material"
+      },
+      "mnemonic": {
+        "meaningScene": "The last plate placed on a stack rises from the top first.",
+        "numberPeg": null,
+        "pronunciation": [],
+        "nodes": [
+          {
+            "id": "item-stack-actor",
+            "assetId": "builtin:plate-stack",
+            "position": [
+              0,
+              0.9,
+              0
+            ],
+            "scale": 1,
+            "animation": "lift-top"
+          }
+        ]
+      }
+    },
+    {
+      "id": "item-queue",
+      "locusId": "room-study-locus-1",
+      "cue": "Which removal order does a queue follow?",
+      "answer": "First in, first out (FIFO).",
+      "source": {
+        "kind": "demo",
+        "excerpt": "A queue removes items in their arrival order: first in, first out.",
+        "locator": "Synthetic public demo, not imported user material"
+      },
+      "mnemonic": {
+        "meaningScene": "The figure that joined the queue first walks through the gate first.",
+        "numberPeg": null,
+        "pronunciation": [],
+        "nodes": [
+          {
+            "id": "item-queue-actor",
+            "assetId": "builtin:queue",
+            "position": [
+              0,
+              0.9,
+              0
+            ],
+            "scale": 1,
+            "animation": "advance-front"
+          }
+        ]
+      }
+    },
+    {
+      "id": "item-water",
+      "locusId": "room-garden-locus-1",
+      "cue": "What does 水（みず） mean?",
+      "answer": "Water. Italian: acqua. Romaji: mizu.",
+      "source": {
+        "kind": "demo",
+        "excerpt": "Demo vocabulary: 水（みず, mizu） means water.",
+        "locator": "Synthetic public demo, not imported user material"
+      },
+      "mnemonic": {
+        "meaningScene": "A giant blue jug tips toward a shallow pool. This fixture uses meaning only; approved pronunciation hooks can be added later.",
+        "numberPeg": null,
+        "pronunciation": [],
+        "nodes": [
+          {
+            "id": "item-water-actor",
+            "assetId": "builtin:water-jug",
+            "position": [
+              0,
+              0.9,
+              0
+            ],
+            "scale": 1,
+            "animation": "none"
+          }
+        ]
+      }
+    }
+  ]
+}

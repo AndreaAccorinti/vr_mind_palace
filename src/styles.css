@@ -1,0 +1,262 @@
+/*
+ * The 2D shell only. Everything a user needs inside a session is drawn in the
+ * scene, because HTML is not visible in immersive VR.
+ */
+
+:root {
+  --stone: #edece5;
+  --panel: #fbfaf6;
+  --edge: #d5dcd3;
+  --ink: #162d30;
+  --ink-soft: #5a6f6a;
+  --accent: #245f53;
+  --accent-bright: #2f7d6d;
+  --warn: #9a5a1c;
+
+  color-scheme: light;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--ink);
+  background: var(--stone);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 100dvh;
+}
+
+/* ---------- Entry header ---------- */
+
+.entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px 28px;
+  padding: 16px 22px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--edge);
+}
+
+.entry__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.entry__mark {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--accent-bright);
+  border-radius: 50% 50% 3px 3px;
+  position: relative;
+  flex: none;
+}
+
+.entry__mark::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px solid var(--accent-bright);
+  border-radius: 50% 50% 0 0;
+}
+
+.entry h1 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -0.6px;
+}
+
+.entry__subtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.entry__status {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.entry__capability {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.entry__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink-soft);
+  flex: none;
+}
+
+.entry__capability--good .entry__dot {
+  background: var(--accent-bright);
+}
+
+.entry__capability--warn .entry__dot {
+  background: var(--warn);
+}
+
+.entry__detail {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  max-width: 62ch;
+}
+
+.entry__detail--flag {
+  color: var(--warn);
+}
+
+.entry__link {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.entry__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.entry__enter {
+  font: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  color: #fff;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  /* Comfortably above the 44px touch target minimum. */
+  min-height: 46px;
+  padding: 12px 26px;
+  cursor: pointer;
+}
+
+.entry__enter:disabled {
+  background: var(--edge);
+  border-color: var(--edge);
+  color: var(--ink-soft);
+  cursor: default;
+}
+
+.entry__hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--ink-soft);
+  text-align: right;
+}
+
+button:focus-visible,
+.entry__link:focus-visible {
+  outline: 3px solid var(--warn);
+  outline-offset: 3px;
+}
+
+/* ---------- 3D stage ---------- */
+
+.stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 60vh;
+}
+
+.stage__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* Drag-to-look should not select page text or trigger pull-to-refresh. */
+  touch-action: none;
+  user-select: none;
+}
+
+.stage__message {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  margin: 0;
+  padding: 9px 16px;
+  font-size: 12px;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+}
+
+/* ---------- WebGL fallback ---------- */
+
+.fallback {
+  max-width: 58ch;
+  margin: 12vh auto;
+  padding: 0 24px;
+}
+
+.fallback h1 {
+  font-size: 24px;
+  letter-spacing: -0.5px;
+}
+
+.fallback p {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--ink-soft);
+}
+
+.fallback__hint {
+  font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .entry {
+    padding: 14px;
+  }
+
+  .entry__actions {
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .entry__enter {
+    width: 100%;
+  }
+
+  .entry__hint {
+    text-align: left;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

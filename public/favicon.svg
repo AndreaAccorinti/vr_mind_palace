@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Loci">
+  <rect width="32" height="32" rx="7" fill="#245f53"/>
+  <path d="M8 25V14a8 8 0 0 1 16 0v11" fill="none" stroke="#f3f1e7" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M13 25v-9a3 3 0 0 1 6 0v9" fill="none" stroke="#7fc4ad" stroke-width="2" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,58 @@
+{
+  "name": "loci-memory-palace",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Loci \u2014 a free browser-based memory palace for Meta Quest 3. M0: XR viability.",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "assets": "node build/copyControllerAssets.mjs",
+    "predev": "npm run assets",
+    "dev": "vite",
+    "prebuild": "npm run assets",
+    "build": "tsc -b --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "pretest:e2e": "npm run assets",
+    "test:e2e": "playwright test",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/noto-sans-jp": "^5.3.0",
+    "@react-three/drei": "10.7.8",
+    "@react-three/fiber": "9.7.0",
+    "@react-three/xr": "6.6.30",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "three": "0.186.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "1.63.0",
+    "@types/node": "22.20.4",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "@types/three": "0.186.0",
+    "@types/webxr": "0.5.24",
+    "@vitejs/plugin-react": "6.1.1",
+    "@webxr-input-profiles/assets": "^1.0.20",
+    "ajv": "^8.20.0",
+    "eslint": "10.11.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.7",
+    "globals": "17.12.0",
+    "jsdom": "30.1.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.70.0",
+    "vite": "8.3.0",
+    "vitest": "5.0.1",
+    "wrangler": "4.135.0"
+  }
+}

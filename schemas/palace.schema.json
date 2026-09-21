@@ -1,0 +1,402 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:loci:palace-content:1",
+  "title": "Loci content interchange v1",
+  "description": "Content only. No media bytes, scheduler state, review history, credentials, arbitrary executable code or remote asset URLs. Semantic validation is additionally required.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "palace",
+    "rooms",
+    "loci",
+    "items"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "loci-content"
+    },
+    "palace": {
+      "$ref": "#/definitions/palace"
+    },
+    "rooms": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "$ref": "#/definitions/room"
+      }
+    },
+    "loci": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 500,
+      "items": {
+        "$ref": "#/definitions/locus"
+      }
+    },
+    "items": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 200,
+      "items": {
+        "$ref": "#/definitions/item"
+      }
+    }
+  },
+  "definitions": {
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "assetId",
+        "position",
+        "scale",
+        "animation"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{1,63}$"
+        },
+        "assetId": {
+          "enum": [
+            "builtin:plate-stack",
+            "builtin:queue",
+            "builtin:water-jug",
+            "builtin:teacup",
+            "builtin:cube",
+            "builtin:tree",
+            "builtin:door",
+            "builtin:placeholder"
+          ]
+        },
+        "position": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 100
+          },
+          "description": "Locus-local translation in meters; compose room, locus, then node transforms."
+        },
+        "scale": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 4
+        },
+        "animation": {
+          "enum": [
+            "none",
+            "bob",
+            "pulse",
+            "lift-top",
+            "advance-front"
+          ]
+        }
+      }
+    },
+    "hook": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sound",
+        "hook",
+        "nodeId"
+      ],
+      "properties": {
+        "sound": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "hook": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "nodeId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{1,63}$"
+        }
+      }
+    },
+    "peg": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "number",
+        "label",
+        "nodeId"
+      ],
+      "properties": {
+        "number": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9999
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "nodeId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{1,63}$"
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "excerpt",
+        "locator"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "demo",
+            "user"
+          ]
+        },
+        "excerpt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "locator": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 500
+        }
+      }
+    },
+    "mnemonic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "meaningScene",
+        "numberPeg",
+        "pronunciation",
+        "nodes"
+      ],
+      "properties": {
+        "meaningScene": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1600
+        },
+        "numberPeg": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/peg"
+            }
+          ]
+        },
+        "pronunciation": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/definitions/hook"
+          }
+        },
+        "nodes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 34,
+          "items": {
+            "$ref": "#/definitions/node"
+          },
+          "description": "Stored recipes, not simultaneous render count. At most two nodes not referenced by pronunciation; render these plus a maximum of six sound nodes from the selected chunk."
+        }
+      }
+    },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "locusId",
+        "cue",
+        "answer",
+        "source",
+        "mnemonic"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{1,63}$"
+        },
+        "locusId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{1,63}$"
+        },
+        "cue": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "answer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "source": {
+          "$ref": "#/definitions/source"
+        },
+        "mnemonic": {
+          "$ref": "#/definitions/mnemonic"
+        }
+      }
+    },
+    "room": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "templateId",
+        "origin",
+        "yawDegrees",
+        "theme",
+        "locusOrder"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{1,63}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "templateId": {
+          "enum": [
+            "gallery-6x6"
+          ]
+        },
+        "origin": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 100
+          },
+          "description": "World-space translation in meters. Right-handed, +Y up."
+        },
+        "yawDegrees": {
+          "type": "number",
+          "minimum": -360,
+          "maximum": 360,
+          "description": "World-space rotation about +Y in degrees, following Three.js convention."
+        },
+        "theme": {
+          "enum": [
+            "warm-stone",
+            "ink-blue",
+            "garden"
+          ]
+        },
+        "locusOrder": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{1,63}$"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "locus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "roomId",
+        "label",
+        "position",
+        "yawDegrees"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{1,63}$"
+        },
+        "roomId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{1,63}$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "position": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 100
+          },
+          "description": "Room-local translation in meters."
+        },
+        "yawDegrees": {
+          "type": "number",
+          "minimum": -360,
+          "maximum": 360,
+          "description": "Room-local rotation about +Y in degrees."
+        }
+      }
+    },
+    "palace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "roomOrder"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{1,63}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "roomOrder": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{1,63}$"
+          },
+          "uniqueItems": true
+        }
+      }
+    }
+  }
+}
