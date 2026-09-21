@@ -1,0 +1,40 @@
+# Render Blueprint. Render does not read public/_headers, so the same rules are
+# repeated here in its own format.
+#
+# A Render *static site* is not a free web service: it is served from their CDN
+# and does not sleep or cold-start. The 15-minute spin-down applies to free web
+# services, which this project does not use.
+services:
+  - type: web
+    runtime: static
+    name: loci-memory-palace
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: no-referrer
+      # WebXR is same-origin-allowed by default, but a restrictive host policy
+      # would block the session request, so it is stated explicitly.
+      - path: /*
+        name: Permissions-Policy
+        value: xr-spatial-tracking=(self), camera=(), microphone=(), geolocation=()
+      # index.html points at the current hashed bundles; it must revalidate.
+      - path: /*
+        name: Cache-Control
+        value: no-cache
+      # Vite content-hashes these, so the bytes at a given URL never change.
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+
+    routes:
+      # Render does not rewrite where a real file exists, so this catch-all
+      # cannot shadow /assets/* or /webxr-profiles/*.
+      - type: rewrite
+        source: /*
+        destination: /index.html

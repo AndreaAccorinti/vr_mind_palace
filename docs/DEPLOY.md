@@ -121,21 +121,47 @@ acceptance record ends up approximate.
 
 ## 7. Other static hosts
 
-`dist/` is a plain static bundle; nothing is Cloudflare-specific except
-`wrangler.jsonc`. Each of these needs the SPA fallback configured, or deep links
-will 404:
+`dist/` is a plain static bundle and nothing in the app is Cloudflare-specific.
+Config for the two most likely alternatives is committed, so switching is a
+dashboard action rather than a code change:
 
-| Host | Build command | Output | Fallback |
-| --- | --- | --- | --- |
-| Cloudflare Pages | `npm run build` | `dist` | SPA fallback in project settings |
-| Vercel | `npm run build` (framework: Vite) | `dist` | rewrite `/(.*)` → `/index.html` |
-| Render (Static Site) | `npm run build` | `dist` | rewrite `/*` → `/index.html` |
+| Host | Config file | How it deploys |
+| --- | --- | --- |
+| Cloudflare Workers | `wrangler.jsonc` | `npm run deploy` from your machine |
+| Vercel | `vercel.json` | Import the GitHub repo; every push deploys |
+| Render | `render.yaml` | New Blueprint from the repo; every push deploys |
+| Cloudflare Pages | *(dashboard)* | Build `npm run build`, output `dist`, enable SPA fallback |
 
-`public/_headers` is read by Cloudflare and Netlify. It sets
-`Permissions-Policy: xr-spatial-tracking=(self)`, which WebXR needs, plus
-`nosniff` and a no-referrer policy. **On a host that ignores `_headers` you must
-set the permissions policy yourself**, or the immersive session request can be
-blocked by policy rather than by capability.
+**The one thing that does not travel is `public/_headers`.** Cloudflare and
+Netlify read it; Vercel and Render do not. That file carries three things:
+
+1. `Permissions-Policy: xr-spatial-tracking=(self)`. WebXR is allowed for
+   same-origin top-level documents by default, so this is belt-and-braces rather
+   than strictly required — but if a host applies a restrictive default policy,
+   its absence turns into a session request that fails on policy rather than on
+   capability, which is a confusing thing to debug in a headset.
+2. `nosniff` and a no-referrer policy.
+3. Cache rules. `index.html` must revalidate or a returning visitor never sees a
+   new deploy; everything under `/assets/` is content-hashed by Vite, so it is
+   cached immutably for a year. That second rule matters here more than usual:
+   it is what stops the headset re-downloading the 1.39 MB Japanese font on
+   every visit.
+
+`vercel.json` and `render.yaml` restate all three in their own formats. They
+were written against each host's documented schema and validated as JSON/YAML,
+but **neither has been exercised by an actual deployment** — only the Cloudflare
+path has had `wrangler deploy --dry-run` run against it.
+
+### Which one
+
+For the M0 device test, **stay on Cloudflare**: it is already wired up and
+dry-run validated, and the device test is about the headset, not the host.
+
+If you later want push-to-deploy so the fix-and-retest loop on the Quest does
+not route through a terminal, **Vercel** is the better of the two alternatives —
+Render's free static sites work but its free build minutes are shared and
+slower, and it brings nothing Vercel does not. Whichever you pick, §5 still
+applies: once a palace exists on an origin, changing hostname orphans it.
 
 ## 8. Rolling back
 

@@ -1,4 +1,17 @@
+# Read by Cloudflare (Workers Static Assets and Pages) and by Netlify.
+# Vercel and Render ignore this file — see vercel.json and render.yaml, which
+# carry the same rules in their own formats.
+
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
   Permissions-Policy: xr-spatial-tracking=(self), camera=(), microphone=(), geolocation=()
+  # index.html points at the current hashed bundles, so it must be revalidated
+  # or a returning visitor never sees a new deploy.
+  Cache-Control: no-cache
+
+# Vite content-hashes everything under /assets, so a given URL's bytes never
+# change. Caching them for a year means a headset downloads the 1.39 MB
+# Japanese font once, not once per visit.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
