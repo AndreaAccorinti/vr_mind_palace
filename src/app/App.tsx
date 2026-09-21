@@ -15,7 +15,7 @@ import { EntryPage, type SessionPhase } from './EntryPage.tsx';
 import { useDiagnostics, type EndedSessionFacts } from './useDiagnostics.ts';
 import { usePalaceSession } from './usePalaceSession.ts';
 import { detectWebGl } from './xrCapability.ts';
-import { useIsEmulated, useXrCapability } from './useXrCapability.ts';
+import { useEmulationState, useXrCapability, type EmulationState } from './useXrCapability.ts';
 import { exitXR, xrStore } from './xrStore.ts';
 
 /**
@@ -70,11 +70,11 @@ function SessionWatcher({
 }
 
 /** Lives inside the Canvas so it may use XR context hooks. */
-function EmulationReporter({ onChange }: { onChange: (emulated: boolean) => void }) {
-  const emulated = useIsEmulated();
+function EmulationReporter({ onChange }: { onChange: (state: EmulationState) => void }) {
+  const emulation = useEmulationState();
   useEffect(() => {
-    onChange(emulated);
-  }, [emulated, onChange]);
+    onChange(emulation);
+  }, [emulation, onChange]);
   return null;
 }
 
@@ -125,7 +125,7 @@ function SessionFactsReporter({ onChange }: { onChange: (facts: RuntimeFacts) =>
 export function App() {
   const [webglAvailable] = useState(detectWebGl);
   const [phase, setPhase] = useState<SessionPhase>({ kind: 'idle' });
-  const [emulated, setEmulated] = useState(false);
+  const [emulation, setEmulation] = useState<EmulationState>('off');
   const capability = useXrCapability();
   const session = usePalaceSession();
 
@@ -211,7 +211,7 @@ export function App() {
       <EntryPage
         capability={capability}
         phase={phase}
-        emulated={emulated}
+        emulation={emulation}
         contentLoading={contentLoading}
         storageNotice={session.storageNotice}
         lastRun={diagnostics.lastRun}
@@ -242,7 +242,7 @@ export function App() {
           <color attach="background" args={['#e7e2d4']} />
           <XR store={xrStore}>
             <SessionWatcher onStart={handleSessionStart} onEnd={handleSessionEnd} />
-            <EmulationReporter onChange={setEmulated} />
+            <EmulationReporter onChange={setEmulation} />
             <SessionFactsReporter onChange={setRuntimeFacts} />
             {/* Fonts stream in through Suspense; the room renders first so the
                 view is never blank while text resolves. */}

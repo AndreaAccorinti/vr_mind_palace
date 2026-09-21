@@ -171,7 +171,10 @@
     permission prompt if one appears. That is the number a user experiences, but
     it is not purely the runtime's.
 - **Quest/browser/device evidence:** Chromium (Playwright, SwiftShader) only.
-  **No Quest 3, no headset, no deployment.**
+  **No Quest 3, no headset, no deployment.** A later check against `npm run dev`
+  on localhost established that the bundled IWER emulator stands down whenever a
+  native `navigator.xr` exists, which is every desktop Chrome — so no immersive
+  session has ever been opened by anything, emulated or real.
 - **Next concrete task and file ownership:** Andrea deploys per `docs/DEPLOY.md`,
   runs the device script in `docs/M0-REVIEW.md` §3, saves a run and pastes it
   into `docs/QUEST-TEST.md`. Fix whatever it finds before starting M1. Ownership

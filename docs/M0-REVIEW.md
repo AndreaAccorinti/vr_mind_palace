@@ -191,11 +191,22 @@ Consequences worth keeping:
 
 ## 5. Prioritised risks that actually affect M0
 
-**R1 — No device evidence exists (highest).**
-Everything under §3 is untested. The emulator that runs on localhost proves
-wiring only, and the UI labels it as such so an emulated session is never
-mistaken for a device pass. *Close by:* running the §3 script on the Quest 3 and
-recording results in `docs/QUEST-TEST.md`.
+**R1 — No device evidence exists (highest), and desktop emulation will not
+substitute.**
+Everything under §3 is untested. Worse than expected: the IWER emulator that
+`@pmndrs/xr` injects on localhost calls `installRuntime()` without
+`forceInstall`, and IWER deliberately refuses to replace an existing
+`navigator.xr`. Every desktop Chrome ships one — present, offering no device —
+so on a normal development machine the emulator is constructed and then stands
+down, and Enter VR stays disabled. Verified in this repo against
+`npm run dev` on localhost.
+
+This means **there is no way to exercise an immersive session without a
+headset**, short of forcing the install (a `@pmndrs/xr` option that does not
+exist today) or a browser extension. The entry page now says so explicitly
+rather than showing an "emulator active" badge that is not true. *Close by:*
+running the §3 script on the Quest 3 and recording results in
+`docs/QUEST-TEST.md`.
 
 **R2 — WebXR needs HTTPS, and the first device test usually will not have it.**
 A `npm run dev` LAN address is not a secure context, so `navigator.xr` is absent

@@ -10,6 +10,7 @@
 
 import { useState } from 'react';
 import type { DiagnosticsRun } from '../persistence/index.ts';
+import type { EmulationState } from './useXrCapability.ts';
 import type { XrCapability } from './xrCapability.ts';
 
 export type SessionPhase =
@@ -23,7 +24,7 @@ export type SessionPhase =
 export interface EntryPageProps {
   readonly capability: XrCapability;
   readonly phase: SessionPhase;
-  readonly emulated: boolean;
+  readonly emulation: EmulationState;
   readonly contentLoading: boolean;
   readonly storageNotice: string | null;
   /** The most recent recorded run, shown once the headset is off. */
@@ -63,7 +64,7 @@ function describeCapability(capability: XrCapability): CapabilityCopy {
 export function EntryPage({
   capability,
   phase,
-  emulated,
+  emulation,
   contentLoading,
   storageNotice,
   lastRun,
@@ -96,9 +97,20 @@ export function EntryPage({
 
         {/* An emulated session proves the wiring and nothing about comfort or
             frame pacing. Saying so here is cheaper than a wrong conclusion. */}
-        {emulated && (
+        {emulation === 'active' && (
           <p className="entry__detail entry__detail--flag">
             Development device emulator active (localhost only). Not evidence of Quest 3 behaviour.
+          </p>
+        )}
+
+        {/* The emulator stands down rather than replacing a browser's own
+            WebXR, which is every desktop Chrome. Without this line, Enter VR
+            stays disabled for no visible reason. */}
+        {emulation === 'inert' && (
+          <p className="entry__detail entry__detail--flag">
+            A development emulator was prepared but this browser already provides WebXR, so it
+            stood down rather than replacing it. Immersive testing needs a real headset on an
+            HTTPS address; the desktop view below works here.
           </p>
         )}
 
