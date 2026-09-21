@@ -7,6 +7,7 @@
  */
 
 export * from './assets.ts';
+export * from './frameStats.ts';
 export * from './geometry.ts';
 export * from './m0Content.ts';
 export * from './palace.ts';

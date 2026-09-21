@@ -7,10 +7,12 @@
  */
 
 import { Canvas } from '@react-three/fiber';
-import { XR } from '@react-three/xr';
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import { XR, useXR } from '@react-three/xr';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { PalaceScene } from '../scene/PalaceScene.tsx';
+import { createLocalDiagnosticsRepository } from '../persistence/index.ts';
 import { EntryPage, type SessionPhase } from './EntryPage.tsx';
+import { useDiagnostics, type EndedSessionFacts } from './useDiagnostics.ts';
 import { usePalaceSession } from './usePalaceSession.ts';
 import { detectWebGl } from './xrCapability.ts';
 import { useIsEmulated, useXrCapability } from './useXrCapability.ts';
@@ -36,16 +38,34 @@ function WebGlUnavailable() {
   );
 }
 
-/** Reports session lifecycle back to the shell without re-rendering the scene. */
-function SessionWatcher({ onChange }: { onChange: (active: boolean) => void }) {
-  useEffect(() => {
-    onChange(xrStore.getState().session != null);
-    return xrStore.subscribe((state, previous) => {
-      if ((state.session != null) !== (previous.session != null)) {
-        onChange(state.session != null);
-      }
-    });
-  }, [onChange]);
+/**
+ * Reports session lifecycle back to the shell without re-rendering the scene.
+ *
+ * On session end the facts are taken from the store's *previous* state: by the
+ * time the new state arrives the session is gone, along with the frame rate and
+ * input sources the finished run needs to describe itself.
+ */
+function SessionWatcher({
+  onStart,
+  onEnd,
+}: {
+  onStart: () => void;
+  onEnd: (facts: RuntimeFacts) => void;
+}) {
+  useEffect(
+    () =>
+      xrStore.subscribe((state, previous) => {
+        const now = state.session != null;
+        const before = previous.session != null;
+        if (now === before) return;
+        if (now) {
+          onStart();
+        } else {
+          onEnd(readRuntimeFacts(previous.session, previous.inputSourceStates.length));
+        }
+      }),
+    [onStart, onEnd],
+  );
   return null;
 }
 
@@ -58,6 +78,50 @@ function EmulationReporter({ onChange }: { onChange: (emulated: boolean) => void
   return null;
 }
 
+/** What the runtime currently says about itself. */
+interface RuntimeFacts {
+  readonly reportedFrameRate: number | null;
+  readonly supportedFrameRates: readonly number[];
+  readonly inputSourceCount: number;
+}
+
+const NO_RUNTIME_FACTS: RuntimeFacts = {
+  reportedFrameRate: null,
+  supportedFrameRates: [],
+  inputSourceCount: 0,
+};
+
+function readRuntimeFacts(session: XRSession | undefined, inputSourceCount: number): RuntimeFacts {
+  if (session == null) return NO_RUNTIME_FACTS;
+  return {
+    reportedFrameRate: session.frameRate ?? null,
+    supportedFrameRates: Array.from(session.supportedFrameRates ?? []),
+    inputSourceCount,
+  };
+}
+
+/**
+ * Reports what the runtime says about itself, while a session is live.
+ *
+ * `frameRate` only exists once there is a session, and it can change mid-session
+ * if the runtime renegotiates, so it is read from store state and refreshed on
+ * `frameratechange` rather than captured once at entry.
+ */
+function SessionFactsReporter({ onChange }: { onChange: (facts: RuntimeFacts) => void }) {
+  const session = useXR((state) => state.session);
+  const inputSourceCount = useXR((state) => state.inputSourceStates.length);
+
+  useEffect(() => {
+    const read = () => onChange(readRuntimeFacts(session, inputSourceCount));
+    read();
+    if (session == null) return undefined;
+    session.addEventListener('frameratechange', read);
+    return () => session.removeEventListener('frameratechange', read);
+  }, [session, inputSourceCount, onChange]);
+
+  return null;
+}
+
 export function App() {
   const [webglAvailable] = useState(detectWebGl);
   const [phase, setPhase] = useState<SessionPhase>({ kind: 'idle' });
@@ -65,13 +129,51 @@ export function App() {
   const capability = useXrCapability();
   const session = usePalaceSession();
 
-  const handleSessionChange = useCallback((active: boolean) => {
-    // `ended` rather than `idle`: returning from VR is a state the page should
-    // acknowledge, not a silent reset.
-    setPhase((current) => (active ? { kind: 'active' } : current.kind === 'active' ? { kind: 'ended' } : current));
+  const diagnosticsRepository = useMemo(() => createLocalDiagnosticsRepository(), []);
+  const [runtimeFacts, setRuntimeFacts] = useState<RuntimeFacts>(NO_RUNTIME_FACTS);
+  // Set the moment Enter VR is pressed, so time-to-first-frame measures what the
+  // user actually waits through, not only the part after the session exists.
+  const [requestedAtMs, setRequestedAtMs] = useState<number | null>(null);
+  const diagnostics = useDiagnostics(runtimeFacts.reportedFrameRate, diagnosticsRepository);
+  const { finish } = diagnostics;
+
+  const handleSessionStart = useCallback(() => {
+    setPhase({ kind: 'active' });
   }, []);
 
+  const inSession = phase.kind === 'active';
+
+  // Banking a run without ending the session, and the only capture path on
+  // desktop, where no session ever ends.
+  const saveRun = useCallback(() => {
+    finish({
+      mode: inSession ? 'immersive-vr' : 'desktop',
+      reportedFrameRate: runtimeFacts.reportedFrameRate,
+      supportedFrameRates: runtimeFacts.supportedFrameRates,
+      inputSourceCount: runtimeFacts.inputSourceCount,
+      requestedAtMs,
+    } satisfies EndedSessionFacts);
+  }, [finish, inSession, runtimeFacts, requestedAtMs]);
+
+  const handleSessionEnd = useCallback(
+    (endedFacts: RuntimeFacts) => {
+      // The run is captured from the ending session's own facts, then the page
+      // moves to `ended` rather than `idle`: returning from VR is a state worth
+      // acknowledging, not a silent reset.
+      finish({
+        mode: 'immersive-vr',
+        reportedFrameRate: endedFacts.reportedFrameRate,
+        supportedFrameRates: endedFacts.supportedFrameRates,
+        inputSourceCount: endedFacts.inputSourceCount,
+        requestedAtMs,
+      } satisfies EndedSessionFacts);
+      setPhase({ kind: 'ended' });
+    },
+    [finish, requestedAtMs],
+  );
+
   const enterVr = useCallback(() => {
+    setRequestedAtMs(performance.now());
     setPhase({ kind: 'requesting' });
     xrStore
       .enterVR()
@@ -112,8 +214,10 @@ export function App() {
         emulated={emulated}
         contentLoading={contentLoading}
         storageNotice={session.storageNotice}
+        lastRun={diagnostics.lastRun}
         onEnterVr={enterVr}
         onDismissStorageNotice={session.dismissStorageNotice}
+        onClearLastRun={diagnostics.clearLastRun}
       />
 
       <div className="stage">
@@ -137,8 +241,9 @@ export function App() {
         >
           <color attach="background" args={['#e7e2d4']} />
           <XR store={xrStore}>
-            <SessionWatcher onChange={handleSessionChange} />
+            <SessionWatcher onStart={handleSessionStart} onEnd={handleSessionEnd} />
             <EmulationReporter onChange={setEmulated} />
+            <SessionFactsReporter onChange={setRuntimeFacts} />
             {/* Fonts stream in through Suspense; the room renders first so the
                 view is never blank while text resolves. */}
             <Suspense fallback={null}>
@@ -160,6 +265,17 @@ export function App() {
                   onReveal={session.reveal}
                   onRate={session.rate}
                   onRestart={session.restart}
+                  diagnostics={{
+                    recorder: diagnostics.recorder,
+                    summary: diagnostics.summary,
+                    visible: diagnostics.visible,
+                    reportedFrameRate: runtimeFacts.reportedFrameRate,
+                    supportedFrameRates: runtimeFacts.supportedFrameRates,
+                    inputSourceCount: runtimeFacts.inputSourceCount,
+                    onToggle: diagnostics.toggle,
+                    onReset: diagnostics.reset,
+                    onSave: saveRun,
+                  }}
                 />
               )}
             </Suspense>

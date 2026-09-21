@@ -16,18 +16,22 @@ import { palette } from './theme.ts';
 export interface NavigationControlsProps {
   readonly posture: PostureMode;
   readonly inSession: boolean;
+  readonly diagnosticsVisible: boolean;
   readonly onSnapTurn: (direction: TurnDirection) => void;
   readonly onRecenter: () => void;
   readonly onTogglePosture: () => void;
+  readonly onToggleDiagnostics: () => void;
   readonly onExit: () => void;
 }
 
 export function NavigationControls({
   posture,
   inSession,
+  diagnosticsVisible,
   onSnapTurn,
   onRecenter,
   onTogglePosture,
+  onToggleDiagnostics,
   onExit,
 }: NavigationControlsProps) {
   return (
@@ -52,6 +56,17 @@ export function NavigationControls({
         width={0.28}
         height={0.11}
         onClick={onTogglePosture}
+      />
+
+      {/* The device-test readout. In-scene because the measurements it takes
+          only exist during an immersive session, where HTML is not visible. */}
+      <SpatialButton
+        label={diagnosticsVisible ? 'Hide stats' : 'Frame stats'}
+        position={[-0.435, -0.14, 0]}
+        width={0.28}
+        height={0.11}
+        primary={diagnosticsVisible}
+        onClick={onToggleDiagnostics}
       />
 
       {/* Leaving must never depend on finding a system menu. */}

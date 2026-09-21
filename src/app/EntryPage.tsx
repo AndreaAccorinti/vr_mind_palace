@@ -8,6 +8,8 @@
  * "unsupported" message serves neither.
  */
 
+import { useState } from 'react';
+import type { DiagnosticsRun } from '../persistence/index.ts';
 import type { XrCapability } from './xrCapability.ts';
 
 export type SessionPhase =
@@ -24,8 +26,11 @@ export interface EntryPageProps {
   readonly emulated: boolean;
   readonly contentLoading: boolean;
   readonly storageNotice: string | null;
+  /** The most recent recorded run, shown once the headset is off. */
+  readonly lastRun: DiagnosticsRun | null;
   readonly onEnterVr: () => void;
   readonly onDismissStorageNotice: () => void;
+  readonly onClearLastRun: () => void;
 }
 
 interface CapabilityCopy {
@@ -61,13 +66,16 @@ export function EntryPage({
   emulated,
   contentLoading,
   storageNotice,
+  lastRun,
   onEnterVr,
   onDismissStorageNotice,
+  onClearLastRun,
 }: EntryPageProps) {
   const copy = describeCapability(capability);
   const canEnter = capability.status === 'supported' && !contentLoading && phase.kind !== 'requesting';
 
   return (
+    <>
     <header className="entry">
       <div className="entry__brand">
         <span className="entry__mark" aria-hidden="true" />
@@ -125,5 +133,48 @@ export function EntryPage({
         </p>
       </div>
     </header>
+
+    {/* Shown after a session, not during one. Reading numbers through a headset
+        and retyping them is how an acceptance record ends up approximate, so
+        the run is kept and presented here as text to copy. */}
+    {lastRun !== null && <LastRunReport run={lastRun} onClear={onClearLastRun} />}
+    </>
+  );
+}
+
+function LastRunReport({ run, onClear }: { run: DiagnosticsRun; onClear: () => void }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = () => {
+    // `writeText` needs a secure context and permission; if it is refused the
+    // text is still on screen and selectable, so this never blocks the user.
+    void navigator.clipboard
+      ?.writeText(run.report)
+      .then(() => setCopied(true))
+      .catch(() => setCopied(false));
+  };
+
+  return (
+    <section className="run" aria-label="Last recorded test run">
+      <div className="run__head">
+        <div>
+          <h2>Last recorded run</h2>
+          <p className="run__meta">
+            {run.context.mode === 'immersive-vr' ? 'Immersive session' : 'Desktop view'} ·{' '}
+            {run.summary.sampleCount} frames ·{' '}
+            {new Date(run.context.recordedAt).toLocaleString()}
+          </p>
+        </div>
+        <div className="run__actions">
+          <button type="button" className="run__button" onClick={copy}>
+            {copied ? 'Copied' : 'Copy for QUEST-TEST.md'}
+          </button>
+          <button type="button" className="run__button" onClick={onClear}>
+            Clear
+          </button>
+        </div>
+      </div>
+      <pre className="run__report">{run.report}</pre>
+    </section>
   );
 }

@@ -22,10 +22,21 @@ Record app revision, URL, Quest model, Horizon OS/browser version, controller/ha
 | Recall | Cue, attempt, optional hint, reveal, rate | Answer remains concealed until reveal; rating saves once. |
 | Route stability | Return after adding or sorting items | Saved landmarks and item locations are unchanged. |
 | Lifecycle | Exit and re-enter VR three times; sleep/wake headset | No duplicate input listeners, stale controllers, missing UI or lost progress. |
-| Performance | Rehearse the representative room for five minutes | Record actual cadence/missed frames at the active rate; no persistent hitching. Report measurements, not an assumed FPS. |
+| Performance | Rehearse the representative room for five minutes with **Frame stats** open, then **Save run** | Paste the saved report below. Record measurements, not an assumed FPS; dropped frames in that report are inferred from intervals, not a compositor count. |
 | File handoff | Download/import exported content before VR | Computer-authored content actually appears on Quest. |
 | Offline, when built | Load/cache selected palace; close/reopen it without network | Required local room/media and review flow work; uncached content explains its state. |
 | Persistence | Reload, revisit and export | Content and reviews persist as designed; errors do not masquerade as saves. |
 | Comfort | Complete a short seated and standing rehearsal | User can move and stop voluntarily; record any discomfort and its trigger. |
 
 IWER and desktop browser checks are useful earlier, but do not mark any of the physical-device rows passed.
+
+## Recorded run
+
+After the rehearsal, press **Save run** in the in-scene Frame stats panel, exit
+VR, and use "Copy for QUEST-TEST.md" on the 2D page. Paste it here, then add the
+headset model, Horizon OS version and browser version, which the app cannot
+know.
+
+```
+(not yet recorded)
+```

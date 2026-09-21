@@ -17,6 +17,8 @@ import {
   itemAtLocus,
   lociOfRoom,
   originTransform,
+  type FrameRecorder,
+  type FrameSummary,
   type LocusId,
   type PalaceContent,
   type ReviewRating,
@@ -26,6 +28,8 @@ import {
   type ViewerState,
 } from '../domain/index.ts';
 import { DesktopCamera } from './DesktopCamera.tsx';
+import { DiagnosticsPanel } from './DiagnosticsPanel.tsx';
+import { FrameSampler } from './FrameSampler.tsx';
 import { Locomotion } from './Locomotion.tsx';
 import { LocusStation } from './LocusStation.tsx';
 import { NavigationControls } from './NavigationControls.tsx';
@@ -53,10 +57,24 @@ export interface PalaceSceneProps {
   readonly onReveal: () => void;
   readonly onRate: (rating: ReviewRating) => void;
   readonly onRestart: () => void;
+  readonly diagnostics: SceneDiagnostics;
+}
+
+/** Everything the in-scene device-test readout needs. */
+export interface SceneDiagnostics {
+  readonly recorder: FrameRecorder;
+  readonly summary: FrameSummary | null;
+  readonly visible: boolean;
+  readonly reportedFrameRate: number | null;
+  readonly supportedFrameRates: readonly number[];
+  readonly inputSourceCount: number;
+  readonly onToggle: () => void;
+  readonly onReset: () => void;
+  readonly onSave: () => void;
 }
 
 export function PalaceScene(props: PalaceSceneProps) {
-  const { content, roomId, viewer, review, selectedLocusId } = props;
+  const { content, roomId, viewer, review, selectedLocusId, diagnostics } = props;
   const inSession = useXR((state) => state.session != null);
   const room = findRoom(content, roomId);
 
@@ -132,17 +150,40 @@ export function PalaceScene(props: PalaceSceneProps) {
             <NavigationControls
               posture={viewer.posture}
               inSession={inSession}
+              diagnosticsVisible={diagnostics.visible}
               onSnapTurn={props.onSnapTurn}
               onRecenter={props.onRecenter}
               onTogglePosture={props.onTogglePosture}
+              onToggleDiagnostics={diagnostics.onToggle}
               onExit={props.onExit}
             />
           </group>
+
+          {/* Off to the right and angled inward: readable at a glance during a
+              rehearsal without standing between the user and the room. */}
+          {diagnostics.visible && (
+            <group position={[1.08, 0.02, 0.26]} rotation={[0, -0.42, 0]}>
+              <DiagnosticsPanel
+                summary={diagnostics.summary}
+                reportedFrameRate={diagnostics.reportedFrameRate}
+                supportedFrameRates={diagnostics.supportedFrameRates}
+                inputSourceCount={diagnostics.inputSourceCount}
+                inSession={inSession}
+                onReset={diagnostics.onReset}
+                onSave={diagnostics.onSave}
+                onClose={diagnostics.onToggle}
+              />
+            </group>
+          )}
         </group>
       </XROrigin>
 
       <Locomotion onSnapTurn={props.onSnapTurn} />
       <DesktopCamera viewer={viewer} enabled={!inSession} />
+
+      {/* Always sampling, whether or not the readout is shown: a run should be
+          complete when the user thinks to look at it, not start from then. */}
+      <FrameSampler recorder={diagnostics.recorder} />
     </>
   );
 }

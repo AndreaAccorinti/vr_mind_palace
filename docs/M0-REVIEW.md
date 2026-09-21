@@ -130,8 +130,18 @@ passed.
 - M2 Delivered cadence and missed frames over a five-minute rehearsal.
 - M3 Time from Enter VR to first rendered frame.
 
-Record all of these in `docs/QUEST-TEST.md`, with headset model, Horizon OS
-version and browser version.
+**The app now records all three.** Open **Frame stats** on the control row, leave
+it running through the rehearsal, press **Save run**, then exit VR: the 2D page
+shows the figures as selectable text with a copy button, ready to paste into
+`docs/QUEST-TEST.md`. Add the headset model, Horizon OS version and browser
+version by hand — the app cannot know those.
+
+Two cautions about those numbers. Dropped frames are *inferred* from frame
+intervals, because WebXR exposes no compositor dropped-frame counter; the panel
+and the report both say so, and neither should be quoted as a compositor
+measurement. And time-to-first-frame is measured from the Enter VR click, so it
+includes the permission prompt if one appears — that is what the user waits
+through, but it is not purely the runtime's.
 
 ### Short Quest 3 test script
 
@@ -198,7 +208,13 @@ troika's own fallback for uncovered glyphs fetches from a jsdelivr CDN, which
 would be both a remote runtime dependency and a privacy leak of the text being
 rendered. `pickFont()` routes each string to a bundled family, so the covered
 scripts never reach for it — but an uncovered script (Korean, Devanagari, emoji)
-still would. *Close by:* adding a coverage assertion at import time in M1 that
+still would.
+
+This has already happened once, in our own interface rather than in user
+content: a `>=` written as U+2265 fell outside the Latin subset, so the whole
+label routed to the 1.4 MB Japanese family and rendered blank until it arrived.
+`src/scene/fonts.test.ts` now pins every interface string, but user content has
+no such guard. *Close by:* adding a coverage assertion at import time in M1 that
 rejects or flags content the bundled fonts cannot render, before it reaches a
 locus.
 
@@ -226,16 +242,18 @@ are covered by regression tests.
 
 Ordered. Each is small enough to own and verify.
 
-1. **Run the device script.** Fill in `docs/QUEST-TEST.md`. This gates M1.
-2. **Fix whatever the device pass finds**, before adding features.
-3. **Font coverage validation** (R3) — a domain-level check that an item's text
+1. **Deploy** per `docs/DEPLOY.md` to get an HTTPS origin.
+2. **Run the device script.** Use Frame stats / Save run for M1–M3, then fill in
+   `docs/QUEST-TEST.md`. This gates M1.
+3. **Fix whatever the device pass finds**, before adding features.
+4. **Font coverage validation** (R3) — a domain-level check that an item's text
    is renderable by a bundled family, surfaced in the editor.
-4. **M1: Zod schema + transactional import.** The contract and the semantic
+5. **M1: Zod schema + transactional import.** The contract and the semantic
    rules already exist as tests in `src/domain/m0Content.test.ts`; promote them
    into a validator that runs over imported content.
-5. **M1: Dexie behind `ContentRepository`.** The interface and its in-memory
+6. **M1: Dexie behind `ContentRepository`.** The interface and its in-memory
    implementation are already the only way the app reaches content.
-6. **M1: three rooms, eight loci.** Needs room-local teleport bounds first
+7. **M1: three rooms, eight loci.** Needs room-local teleport bounds first
    (gap 3) if any room is rotated.
-7. **M1: review store separate from content store**, so a content re-import
+8. **M1: review store separate from content store**, so a content re-import
    cannot erase scheduling history.

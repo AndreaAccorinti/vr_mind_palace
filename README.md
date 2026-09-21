@@ -26,15 +26,18 @@ npm run preview # serve the built output
 | `npm test` | Vitest: domain, persistence, schema conformance, architecture. |
 | `npm run test:e2e` | Playwright desktop checks against the production build. |
 | `npm run assets` | Copies bundled WebXR controller profiles into `public/`. |
-| `npm run deploy` | `wrangler deploy`. **Publishes.** Read `docs/BLUEPRINT.md` first. |
+| `npm run deploy` | `wrangler deploy`. **Publishes.** Follow `docs/DEPLOY.md`. |
 
 ### Testing on the headset
 
 WebXR needs a secure context, so a `npm run dev` LAN address will **not** offer
-VR — the page will correctly say there is no WebXR and that is not a bug. Serve
-the built output over HTTPS (a deployed `workers.dev` URL or a tunnel), open the
-top-level URL in Meta Quest Browser, then follow the script in
-`docs/M0-REVIEW.md` §3 and record results in `docs/QUEST-TEST.md`.
+VR — the page will correctly say there is no WebXR and that is not a bug.
+
+1. Deploy over HTTPS: `docs/DEPLOY.md`.
+2. Open the top-level URL in Meta Quest Browser and follow `docs/M0-REVIEW.md` §3.
+3. During the rehearsal, open **Frame stats** in the scene and press **Save
+   run**. After exiting VR the 2D page shows the figures as text to copy into
+   `docs/QUEST-TEST.md`, so nothing has to be read through the headset.
 
 ## Layout
 
@@ -64,6 +67,7 @@ The domain boundary is enforced by an ESLint rule and by
 | --- | --- |
 | `AGENTS.md` | Shared architecture, product, collaboration and verification rules |
 | `docs/M0-REVIEW.md` | M0 state, gaps, acceptance criteria, risks and next tasks |
+| `docs/DEPLOY.md` | Cloudflare deploy runbook and publication checklist |
 | `CLAUDE.md` | Explicit import of the shared rules for Claude Code |
 | `HANDOFF.md` | Current state and a handoff template |
 | `docs/BLUEPRINT.md` | Full sourced design and hosting comparison |

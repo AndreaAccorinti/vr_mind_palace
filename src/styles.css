@@ -260,3 +260,83 @@ button:focus-visible,
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---------- Last recorded device-test run ---------- */
+
+.run {
+  border-top: 1px solid var(--edge);
+  background: var(--panel);
+  padding: 14px 22px 18px;
+}
+
+.run__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px 20px;
+}
+
+.run h2 {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: -0.2px;
+}
+
+.run__meta {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.run__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.run__button {
+  font: inherit;
+  font-size: 12px;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--edge);
+  border-radius: 7px;
+  min-height: 36px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.run__button:hover {
+  border-color: var(--accent-bright);
+}
+
+.run__report {
+  margin: 10px 0 0;
+  padding: 12px 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--stone);
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  /* Selectable and scrollable rather than clipped: this text is the evidence. */
+  white-space: pre-wrap;
+  overflow-x: auto;
+  max-height: 40vh;
+  user-select: text;
+}
+
+@media (max-width: 720px) {
+  .run {
+    padding: 14px;
+  }
+
+  .run__actions {
+    width: 100%;
+  }
+
+  .run__button {
+    flex: 1;
+  }
+}

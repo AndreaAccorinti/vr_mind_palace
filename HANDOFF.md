@@ -1,8 +1,9 @@
 # Handoff
 
-- Current state: **M0 implemented and passing its automated checks. No Quest 3
-  hardware test has been run.** The specification pack has been materialised and
-  a working React/WebXR application scaffolded on top of it.
+- Current state: **M0 implemented and passing its automated checks, now with
+  device-test instrumentation. No Quest 3 hardware test has been run.** The
+  specification pack has been materialised and a working React/WebXR application
+  scaffolded on top of it.
 - Active milestone: M0 — XR viability. Awaiting physical-device verification
   before M1 starts.
 - Current writer: Claude Code (this session).
@@ -13,7 +14,7 @@
 - Shared decisions: static React/WebXR app, Cloudflare assets-only hosting, no
   paid runtime AI, stable loci, local persistence first. Unchanged.
 - Files to read: `AGENTS.md`, `docs/BLUEPRINT.md`, `docs/M0-REVIEW.md`,
-  `docs/QUEST-TEST.md`, `schemas/palace.schema.json`.
+  `docs/DEPLOY.md`, `docs/QUEST-TEST.md`, `schemas/palace.schema.json`.
 
 ## Task: scaffold and implement M0
 
@@ -74,11 +75,10 @@
   - `npm run lint` (`eslint .`) — pass, 0 errors, 0 warnings.
   - `npm test` (`vitest run`) — **93 passed / 93**, 7 files.
   - `npm run test:e2e` (`playwright test`, Chromium + SwiftShader) — **7 passed / 7**.
-  - `npm run build` — pass. `dist/` = 26 files, 4.0 MB total; largest asset
-    1.39 MB (the Japanese font), well inside Cloudflare's 20,000-file and
-    25 MiB-per-asset free limits.
-  - `npx wrangler deploy --dry-run` — config valid, 26 assets read, no bindings,
-    no Worker script. **Nothing was deployed.**
+  - `npm run build` — pass. (Figures superseded by the next task entry after the
+    WOFF switch changed the font sizes.)
+  - `npx wrangler deploy --dry-run` — config valid, no bindings, no Worker
+    script. **Nothing was deployed.**
   - Manual browser inspection via Playwright screenshots: the room, three
     plinths, spatial text, selection ring, and the full cue → hint → reveal →
     rate loop were confirmed rendering and responding to pointer input.
@@ -98,11 +98,85 @@
   coverage is Latin + Japanese only.
 - **Quest/browser/device evidence:** Chromium (Playwright, SwiftShader) only.
   **No Quest 3, no headset, no HTTPS deployment.**
-- **Next concrete task and file ownership:** Andrea runs the device script in
-  `docs/M0-REVIEW.md` §3 against an HTTPS origin and records results in
-  `docs/QUEST-TEST.md`. Fix whatever it finds before starting M1. Ownership of
-  `src/domain` and `schemas/` should stay with one writer while M1's validator
-  is built.
+- **Next concrete task and file ownership:** see the entry below.
+
+## Task: device-test instrumentation and deploy runbook
+
+- **Task / owner / base revision:** make the M0 device gate executable / Claude
+  Code / `85b81bd`.
+- **Outcome and changed paths:**
+  - `src/domain/frameStats.ts` — frame-interval statistics: histogram
+    percentiles, mean, max, stalls, and an estimate of dropped frames against a
+    target rate. Pure, no renderer, no browser API.
+  - `src/scene/FrameSampler.tsx` — reports frames to the recorder from
+    `useFrame`. No allocation, no React setter, no DOM access in that path.
+  - `src/scene/DiagnosticsPanel.tsx` — the in-scene readout, plus a Frame stats
+    toggle on the control row.
+  - `src/app/useDiagnostics.ts` — turns the recorder into React state on a 2 Hz
+    timer rather than per frame.
+  - `src/persistence/diagnosticsRepository.ts` — stores the last run so it can
+    be read after the headset is off.
+  - `src/app/EntryPage.tsx` — "Last recorded run" as selectable text, with a
+    copy button, shown on the 2D page.
+  - `docs/DEPLOY.md` — the Cloudflare runbook, including the publication
+    checklist and the one-origin rule.
+  - Tests: `src/domain/frameStats.test.ts`, `src/scene/fonts.test.ts`,
+    `src/persistence/diagnosticsRepository.test.ts`, `e2e/diagnostics.spec.ts`.
+- **Decisions and reason:**
+  - **Dropped frames are inferred, and labelled as such** on the panel, in the
+    report and in the code. WebXR exposes no compositor dropped-frame counter,
+    so the figure is derived from intervals; presenting it as a measurement
+    would be the kind of claim AGENTS.md rules out.
+  - **A suspended session is not a stall.** Taking the headset off produces one
+    enormous interval; counting it as hundreds of dropped frames would turn a
+    normal event into an alarming number. Intervals over 1 s are counted
+    separately and excluded from every other statistic.
+  - **The recorder owns the run, not a shared mutable prop.** The first design
+    passed a mutable buffer into the sampler; the React Compiler lint rejected
+    it, correctly, and moving that state into the recorder removed the shared
+    mutable object and all the refs along with it. No lint suppressions were
+    added.
+  - **The run is persisted, not just displayed.** Reading numbers through a
+    headset and retyping them is how an acceptance record becomes approximate.
+  - **The histogram tracks up to 250 ms**, not 80 ms. At 80 ms every percentile
+    collapsed onto the maximum as soon as the renderer was slow, which reads as
+    a catastrophe rather than as "this machine has no GPU".
+- **Exact checks run and their results** (Node v22.22.2):
+  - `npm run typecheck` — pass (4 projects).
+  - `npm run lint` — pass, 0 errors, 0 warnings.
+  - `npm test` — **170 passed / 170**, 11 files.
+  - `npm run test:e2e` — **9 passed / 9**.
+  - `npm run build` — pass. Clean `dist/` = **22 files, 4.8 MB** (Wrangler's own
+    output says 26, counting directories); largest asset
+    1.39 MB (a Japanese font). Initial load is ~1.4 MB of JS/CSS (~390 KB
+    gzipped) plus 62 KB of Latin fonts; the 2.8 MB of Japanese fonts is fetched
+    only when a string needs it.
+  - `npx wrangler deploy --dry-run` — config valid, no bindings, no Worker
+    script. **Nothing was deployed.**
+  - `npx wrangler deployments --help` / `rollback --help` — confirmed the
+    rollback commands quoted in `docs/DEPLOY.md` exist in the pinned Wrangler.
+  - Browser inspection via Playwright: the panel renders, the figures update,
+    Save run produces the report, and it survives a reload.
+- **Checks not run and why:** everything requiring the headset, unchanged. The
+  instrumentation has never seen an XR frame — on desktop it samples
+  `requestAnimationFrame`, which is why the panel and the report both say so.
+- **Outstanding defects or uncertainties:**
+  - Two bugs were found by looking at the rendered panel rather than by a test,
+    and both are now covered: a `>=` written as U+2265 fell outside the bundled
+    Latin subset, so the label routed to the 1.4 MB Japanese font and rendered
+    blank; and the 80 ms histogram ceiling collapsed the percentiles. The first
+    is risk R3 from `docs/M0-REVIEW.md` occurring in our own UI, which is worth
+    noting when M1 adds content validation.
+  - Time-to-first-frame is measured from the Enter VR click, so it includes the
+    permission prompt if one appears. That is the number a user experiences, but
+    it is not purely the runtime's.
+- **Quest/browser/device evidence:** Chromium (Playwright, SwiftShader) only.
+  **No Quest 3, no headset, no deployment.**
+- **Next concrete task and file ownership:** Andrea deploys per `docs/DEPLOY.md`,
+  runs the device script in `docs/M0-REVIEW.md` §3, saves a run and pastes it
+  into `docs/QUEST-TEST.md`. Fix whatever it finds before starting M1. Ownership
+  of `src/domain` and `schemas/` should stay with one writer while M1's
+  validator is built.
 
 ## Copy for each completed task
 
