@@ -1,11 +1,16 @@
 # M0 review — XR viability
 
-Reviewer/implementer: Claude Code. Date: 21 September 2026.
+Reviewer/implementer: Claude Code. Date: 21 September 2026, updated after the
+first device run on 23 September 2026.
 Scope: milestone M0 from `docs/BLUEPRINT.md`, as implemented in this repository.
 
 This is a review of code that now exists, not of a proposal. Every claim below
 is either something a listed check actually exercised, or is marked as
-unverified. **No Quest 3 hardware test has been run.**
+unverified.
+
+**The first Quest 3 run failed** (`docs/QUEST-TEST.md`): controllers did not
+work and the floor flickered. Both causes are fixed but the fixes are
+unverified on hardware. Rendering performance was measured and is good.
 
 ---
 
@@ -26,9 +31,10 @@ unverified. **No Quest 3 hardware test has been run.**
 
 ### Gaps that remain in M0
 
-1. **No physical-device evidence of anything.** Controller mapping, comfort,
-   optical text readability and frame cadence are all untested. This is the
-   whole point of the milestone gate and it is still open.
+1. **The device gate is still open.** Run 1 failed and the fixes have not been
+   re-tested. Frame cadence is now measured and good (72.3 fps mean, p99
+   15.38 ms, zero stalls over 38.7 s); controller mapping, comfort and optical
+   readability remain untested because the controllers never registered.
 2. **Snap turn needs two controllers.** `useXRControllerLocomotion` returns
    early unless both a translation and a rotation controller are present
    (`@pmndrs/xr/dist/controller-locomotion.js`). With one controller, or with

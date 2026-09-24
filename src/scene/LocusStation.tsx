@@ -69,7 +69,16 @@ export function LocusStation({
           above, unlike an outline on the prop itself. */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.004, 0]}>
         <ringGeometry args={[0.42, 0.52, 40]} />
-        <meshBasicMaterial color={highlight} transparent opacity={selected ? 0.95 : 0.55} />
+        {/* Sits above the teleport sheet, so a stronger offset than that. */}
+        <meshBasicMaterial
+          color={highlight}
+          transparent
+          opacity={selected ? 0.95 : 0.55}
+          depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-3}
+          polygonOffsetUnits={-3}
+        />
       </mesh>
 
       <mesh position={[0, plinthHeight / 2, 0]}>

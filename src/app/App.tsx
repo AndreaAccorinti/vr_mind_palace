@@ -41,16 +41,20 @@ function WebGlUnavailable() {
 /**
  * Reports session lifecycle back to the shell without re-rendering the scene.
  *
- * On session end the facts are taken from the store's *previous* state: by the
- * time the new state arrives the session is gone, along with the frame rate and
- * input sources the finished run needs to describe itself.
+ * It deliberately does NOT read the session's own properties here. An earlier
+ * version took them from the store's *previous* state at the transition, which
+ * on a real Quest 3 reported "frame rate not reported, 0 input sources" for a
+ * session that had been running at 72 Hz with two controllers: by the time the
+ * store drops the session, the runtime has already cleared `frameRate` and
+ * fired `inputsourceschange` removing every input. The facts have to be sampled
+ * while the session is alive, which `SessionFactsReporter` does.
  */
 function SessionWatcher({
   onStart,
   onEnd,
 }: {
   onStart: () => void;
-  onEnd: (facts: RuntimeFacts) => void;
+  onEnd: () => void;
 }) {
   useEffect(
     () =>
@@ -58,11 +62,8 @@ function SessionWatcher({
         const now = state.session != null;
         const before = previous.session != null;
         if (now === before) return;
-        if (now) {
-          onStart();
-        } else {
-          onEnd(readRuntimeFacts(previous.session, previous.inputSourceStates.length));
-        }
+        if (now) onStart();
+        else onEnd();
       }),
     [onStart, onEnd],
   );
@@ -83,12 +84,15 @@ interface RuntimeFacts {
   readonly reportedFrameRate: number | null;
   readonly supportedFrameRates: readonly number[];
   readonly inputSourceCount: number;
+  /** False once the session ends, which empties every other field. */
+  readonly inSession: boolean;
 }
 
 const NO_RUNTIME_FACTS: RuntimeFacts = {
   reportedFrameRate: null,
   supportedFrameRates: [],
   inputSourceCount: 0,
+  inSession: false,
 };
 
 function readRuntimeFacts(session: XRSession | undefined, inputSourceCount: number): RuntimeFacts {
@@ -97,6 +101,7 @@ function readRuntimeFacts(session: XRSession | undefined, inputSourceCount: numb
     reportedFrameRate: session.frameRate ?? null,
     supportedFrameRates: Array.from(session.supportedFrameRates ?? []),
     inputSourceCount,
+    inSession: true,
   };
 }
 
@@ -131,6 +136,10 @@ export function App() {
 
   const diagnosticsRepository = useMemo(() => createLocalDiagnosticsRepository(), []);
   const [runtimeFacts, setRuntimeFacts] = useState<RuntimeFacts>(NO_RUNTIME_FACTS);
+  // The best facts seen while a session was alive. `runtimeFacts` resets to
+  // empty the moment the session ends, so a finished run must describe itself
+  // from this instead.
+  const [sessionFacts, setSessionFacts] = useState<RuntimeFacts>(NO_RUNTIME_FACTS);
   // Set the moment Enter VR is pressed, so time-to-first-frame measures what the
   // user actually waits through, not only the part after the session exists.
   const [requestedAtMs, setRequestedAtMs] = useState<number | null>(null);
@@ -141,36 +150,43 @@ export function App() {
     setPhase({ kind: 'active' });
   }, []);
 
+  const handleRuntimeFacts = useCallback((facts: RuntimeFacts) => {
+    setRuntimeFacts(facts);
+    // Keep the last reading taken while the session was alive; it is the only
+    // honest description of a run once the session has gone.
+    if (facts.inSession) setSessionFacts(facts);
+  }, []);
+
   const inSession = phase.kind === 'active';
 
   // Banking a run without ending the session, and the only capture path on
   // desktop, where no session ever ends.
   const saveRun = useCallback(() => {
+    // Live facts while in session; the last good ones once it has ended.
+    const facts = inSession ? runtimeFacts : sessionFacts;
     finish({
       mode: inSession ? 'immersive-vr' : 'desktop',
-      reportedFrameRate: runtimeFacts.reportedFrameRate,
-      supportedFrameRates: runtimeFacts.supportedFrameRates,
-      inputSourceCount: runtimeFacts.inputSourceCount,
+      reportedFrameRate: facts.reportedFrameRate,
+      supportedFrameRates: facts.supportedFrameRates,
+      inputSourceCount: facts.inputSourceCount,
       requestedAtMs,
     } satisfies EndedSessionFacts);
-  }, [finish, inSession, runtimeFacts, requestedAtMs]);
+  }, [finish, inSession, runtimeFacts, sessionFacts, requestedAtMs]);
 
-  const handleSessionEnd = useCallback(
-    (endedFacts: RuntimeFacts) => {
-      // The run is captured from the ending session's own facts, then the page
-      // moves to `ended` rather than `idle`: returning from VR is a state worth
-      // acknowledging, not a silent reset.
-      finish({
-        mode: 'immersive-vr',
-        reportedFrameRate: endedFacts.reportedFrameRate,
-        supportedFrameRates: endedFacts.supportedFrameRates,
-        inputSourceCount: endedFacts.inputSourceCount,
-        requestedAtMs,
-      } satisfies EndedSessionFacts);
-      setPhase({ kind: 'ended' });
-    },
-    [finish, requestedAtMs],
-  );
+  const handleSessionEnd = useCallback(() => {
+    // Captured from the last facts observed while the session was alive, not
+    // from the corpse: an ended XRSession reports no frame rate and no inputs.
+    // Then the page moves to `ended` rather than `idle`, because returning from
+    // VR is a state worth acknowledging, not a silent reset.
+    finish({
+      mode: 'immersive-vr',
+      reportedFrameRate: sessionFacts.reportedFrameRate,
+      supportedFrameRates: sessionFacts.supportedFrameRates,
+      inputSourceCount: sessionFacts.inputSourceCount,
+      requestedAtMs,
+    } satisfies EndedSessionFacts);
+    setPhase({ kind: 'ended' });
+  }, [finish, sessionFacts, requestedAtMs]);
 
   const enterVr = useCallback(() => {
     setRequestedAtMs(performance.now());
@@ -235,7 +251,10 @@ export function App() {
           // visible gain.
           dpr={[1, 1.75]}
           gl={{ antialias: true, powerPreference: 'high-performance' }}
-          camera={{ fov: 62, near: 0.05, far: 60, position: [0, 1.6, 1.2] }}
+          // near 0.1 rather than 0.05: depth precision scales with the near
+          // plane, and a Quest depth buffer is less forgiving than a desktop
+          // one. Nothing in this scene is ever within 10 cm of the eye.
+          camera={{ fov: 62, near: 0.1, far: 60, position: [0, 1.6, 1.2] }}
           // No shadow maps anywhere in the baseline.
           shadows={false}
         >
@@ -243,7 +262,7 @@ export function App() {
           <XR store={xrStore}>
             <SessionWatcher onStart={handleSessionStart} onEnd={handleSessionEnd} />
             <EmulationReporter onChange={setEmulation} />
-            <SessionFactsReporter onChange={setRuntimeFacts} />
+            <SessionFactsReporter onChange={handleRuntimeFacts} />
             {/* Fonts stream in through Suspense; the room renders first so the
                 view is never blank while text resolves. */}
             <Suspense fallback={null}>

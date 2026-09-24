@@ -70,6 +70,31 @@ test('serves controller models from this origin, not a CDN', async ({ page }) =>
   }
 });
 
+test('every advertised controller profile is actually served', async ({ page }) => {
+  // The defect this guards against was silent on the device: a 404 here makes
+  // @pmndrs/xr drop the controller without registering it, so the headset shows
+  // no ray, no model and no selection, and nothing in the app says why.
+  await page.goto('/');
+  const listing: Record<string, { path: string }> = await (
+    await page.request.get('/webxr-profiles/profilesList.json')
+  ).json();
+
+  expect(Object.keys(listing).length).toBeGreaterThan(0);
+
+  for (const [id, entry] of Object.entries(listing)) {
+    const profile = await page.request.get(`/webxr-profiles/${entry.path}`);
+    expect(profile.status(), `${id} -> ${entry.path}`).toBe(200);
+
+    // The profile names the model files; those must be served too.
+    const parsed: { layouts: Record<string, { assetPath: string }> } = await profile.json();
+    const dir = entry.path.split('/')[0];
+    for (const layout of Object.values(parsed.layouts)) {
+      const asset = await page.request.get(`/webxr-profiles/${dir}/${layout.assetPath}`);
+      expect(asset.status(), `${id} -> ${layout.assetPath}`).toBe(200);
+    }
+  }
+});
+
 test('makes no third-party network requests', async ({ page }) => {
   const external: string[] = [];
   const isLocal = (url: string) => {

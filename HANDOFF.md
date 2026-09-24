@@ -1,11 +1,11 @@
 # Handoff
 
-- Current state: **M0 implemented and passing its automated checks, now with
-  device-test instrumentation. No Quest 3 hardware test has been run.** The
-  specification pack has been materialised and a working React/WebXR application
-  scaffolded on top of it.
-- Active milestone: M0 — XR viability. Awaiting physical-device verification
-  before M1 starts.
+- Current state: **M0 has had its first Quest 3 run. It failed: controllers did
+  not work and the floor flickered.** Both root causes were found and fixed, plus
+  a bug in the instrumentation itself. **A re-test on the device is the next
+  action, and M0 stays open until it passes.**
+- Active milestone: M0 — XR viability. First device run failed; fixes are in,
+  re-test pending. M1 does not start until M0 passes.
 - Current writer: Claude Code (this session).
 - Current reviewer: unassigned. `docs/M0-REVIEW.md` is the implementer's own
   review; an independent pass is still worth having.
@@ -180,6 +180,64 @@
   into `docs/QUEST-TEST.md`. Fix whatever it finds before starting M1. Ownership
   of `src/domain` and `schemas/` should stay with one writer while M1's
   validator is built.
+
+## Task: fix what the first Quest 3 run found
+
+- **Task / owner / base revision:** act on device run 1 / Claude Code / `db8b5fa`.
+- **Outcome and changed paths:**
+  - `build/copyControllerAssets.mjs` — generates `profilesList.json` from the
+    bundled directories instead of copying the upstream one, aliases Quest and
+    Oculus controller ids onto the bundled profile, and fails the build if any
+    advertised id does not resolve to a file on disk.
+  - `src/scene/RoomShell.tsx` — wall and skirting boxes sink below the floor;
+    floor grid uses polygon offset.
+  - `src/scene/TeleportFloor.tsx`, `src/scene/LocusStation.tsx` — polygon offset
+    and `depthWrite: false` on the transparent floor overlays.
+  - `src/app/App.tsx` — camera near plane 0.05 m to 0.1 m; session facts are
+    captured while the session is alive rather than read from it after it ends.
+  - Tests: `src/scene/controllerProfiles.test.ts`, plus an e2e case that fetches
+    every advertised profile and its models over HTTP.
+- **Decisions and reason:**
+  - **The listing now describes only what is served.** The upstream
+    `profilesList.json` advertises 42 profiles; we bundle two. The loader picks
+    the first reported id it finds in the listing, so a Quest reporting an id
+    like `meta-quest-touch-plus-v2` resolved to a directory that was never
+    copied. `@pmndrs/xr` swallows that failure with `.catch(console.error)` and
+    never calls `addController`, so the controller does not exist at all. The
+    `defaultControllerProfileId` fallback was dead code, because the lookup
+    succeeded in the listing before it could apply.
+  - **Aliases rather than more bytes.** Quest and Oculus ids map onto the one
+    bundled Touch Plus profile. An unrecognised Quest controller gets a
+    slightly-wrong model instead of no controller, at zero download cost.
+  - **Coplanar geometry, not depth-buffer tuning, caused the flicker.** Two
+    boxes had faces at exactly `y = 0`. Sinking them is the actual fix; polygon
+    offset on the decals and a 0.1 m near plane are belt-and-braces for the
+    millimetre gaps, which depended on precision we do not control.
+  - **Three reported fields were the instrument's fault, not the device's.**
+    Reading an ended XRSession gives no frame rate and no inputs. They are
+    struck from the acceptance record rather than believed.
+- **Exact checks run and their results** (Node v22.22.2):
+  - `npm run typecheck` — pass. `npm run lint` — pass, 0 errors, 0 warnings.
+  - `npm test` — **189 passed / 189**, 11 files.
+  - `npm run test:e2e` — **10 passed / 10**.
+  - `npm run build` — pass.
+- **Checks not run and why:** the re-test itself. No headset is attached to this
+  environment, so whether the controllers now work and the floor is steady is
+  unverified. Both fixes are reasoned from library source and device symptoms,
+  not from a passing device run.
+- **Outstanding defects or uncertainties:**
+  - Whether Quest Browser reports `frameRate` / `supportedFrameRates` at all is
+    still unknown; the capture bug masked it. Run 2 answers it.
+  - Time to first frame was 3811.9 ms, which is slow. Not yet investigated.
+  - The controller fix is inferred. If run 2 still shows no controllers, the
+    next step is the Quest Browser console, where `@pmndrs/xr` logs the swallowed
+    fetch error.
+- **Quest/browser/device evidence:** Quest 3, Quest Browser
+  `Chrome/152.0.7977.64 VR Safari/537.36`, 23 September 2026. Rendering was
+  72.3 fps mean, p99 15.38 ms, zero stalls — that part is good and stands.
+- **Next concrete task and file ownership:** redeploy and re-run
+  `docs/QUEST-TEST.md`. Confirm controllers select, teleport and snap turn, and
+  that the floor is steady. Record run 2.
 
 ## Copy for each completed task
 

@@ -42,7 +42,19 @@ export function TeleportFloor({ room, onTeleport, visible }: TeleportFloorProps)
         }}
       >
         <planeGeometry args={[width, depth]} />
-        <meshBasicMaterial color={palette.accent} transparent opacity={visible ? 0.14 : 0.04} />
+        {/* Polygon offset rather than a millimetre gap: the gap that looked
+            ample against a desktop depth buffer flickered on the headset.
+            depthWrite off keeps this transparent sheet from fighting the
+            selection rings that sit on top of it. */}
+        <meshBasicMaterial
+          color={palette.accent}
+          transparent
+          opacity={visible ? 0.14 : 0.04}
+          depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
+        />
       </mesh>
     </TeleportTarget>
   );

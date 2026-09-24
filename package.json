@@ -17,6 +17,7 @@
     "typecheck": "tsc -b --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "pretest": "npm run assets",
     "test": "vitest run",
     "test:watch": "vitest",
     "pretest:e2e": "npm run assets",

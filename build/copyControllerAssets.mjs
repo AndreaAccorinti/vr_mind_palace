@@ -6,51 +6,92 @@
  * something a headset needs immediately, and AGENTS.md rules out accidental
  * remote dependencies, so the models are served from our own origin instead.
  *
- * Only the Quest 3 profile is copied. The full asset package is about 34 MB,
- * nearly all of it profiles for headsets this milestone does not target; the
- * store also names this profile as the fallback, so an unrecognised controller
- * gets a Quest model rather than a CDN request. Add a directory here to support
- * another headset.
+ * Only the Quest 3 controller and the generic hand are copied. The full asset
+ * package is about 34 MB, nearly all of it profiles for headsets this milestone
+ * does not target.
  *
  * Source: @webxr-input-profiles/assets (MIT, Amazon). Pinned in package.json,
  * so the copied bytes are reproducible from the lockfile.
  */
 
+import { existsSync } from 'node:fs';
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = dirname(fileURLToPath(new URL('../package.json', import.meta.url)));
 const source = join(root, 'node_modules', '@webxr-input-profiles', 'assets', 'dist', 'profiles');
-const target = join(root, 'public', 'webxr-profiles');
+const outDir = join(root, 'public', 'webxr-profiles');
 
-/**
- * Profiles to serve locally.
- *  - `meta-quest-touch-plus`: the controllers a Quest 3 ships with, and the
- *    fallback the store names for anything it does not recognise.
- *  - `generic-hand`: the hand model, needed because hand tracking is requested
- *    as an optional feature and would otherwise reach for the CDN.
- */
+/** Profile directories to serve. Each is copied verbatim. */
 const PROFILES = ['meta-quest-touch-plus', 'generic-hand'];
 
-await rm(target, { recursive: true, force: true });
-await mkdir(target, { recursive: true });
+/**
+ * Extra ids the listing should resolve, pointing at a profile we do bundle.
+ *
+ * This exists because of a real device failure. The loader picks the FIRST
+ * reported id it finds in `profilesList.json`, and we previously shipped the
+ * upstream listing of 42 profiles while copying only two directories. A Quest
+ * reporting an id like `meta-quest-touch-plus-v2` resolved to a directory that
+ * was never copied, the fetch 404'd, and `@pmndrs/xr` swallows that failure
+ * with `.catch(console.error)` — so the controller was never registered at all.
+ * No ray, no model, no selection, and an empty `inputSourceStates`. The
+ * `defaultControllerProfileId` fallback never helped, because the lookup
+ * succeeded in the listing before it could apply.
+ *
+ * Aliasing costs nothing: these are id-to-path entries pointing at a directory
+ * that already exists. An unrecognised Quest controller now gets a
+ * slightly-wrong model instead of no controller.
+ */
+const ALIASES = {
+  'meta-quest-touch-plus-v2': 'meta-quest-touch-plus',
+  'meta-quest-touch-pro': 'meta-quest-touch-plus',
+  'oculus-touch-v3': 'meta-quest-touch-plus',
+  'oculus-touch-v2': 'meta-quest-touch-plus',
+  'oculus-touch': 'meta-quest-touch-plus',
+  'generic-trigger-squeeze-thumbstick': 'meta-quest-touch-plus',
+  'generic-trigger-squeeze': 'meta-quest-touch-plus',
+  'generic-trigger': 'meta-quest-touch-plus',
+  'generic-fixed-hand': 'generic-hand',
+};
 
-// The loader reads the listing first to map a reported profile id to a path, so
-// it has to be present even though only one profile is served.
-await cp(join(source, 'profilesList.json'), join(target, 'profilesList.json'));
+await rm(outDir, { recursive: true, force: true });
+await mkdir(outDir, { recursive: true });
 
 for (const profile of PROFILES) {
-  await cp(join(source, profile), join(target, profile), { recursive: true });
+  await cp(join(source, profile), join(outDir, profile), { recursive: true });
 }
+
+const upstream = JSON.parse(await readFile(join(source, 'profilesList.json'), 'utf-8'));
+
+/** The listing we serve: only ids that resolve to bundled files. */
+const listing = {};
+for (const profile of PROFILES) {
+  listing[profile] = { path: `${profile}/profile.json` };
+}
+for (const [alias, profile] of Object.entries(ALIASES)) {
+  if (PROFILES.includes(profile)) {
+    listing[alias] = { path: `${profile}/profile.json` };
+  }
+}
+
+// An id we invented would resolve here but fail on a real headset, so check
+// every one against the upstream catalogue.
+for (const id of Object.keys(listing)) {
+  if (!(id in upstream)) {
+    throw new Error(`"${id}" is not a real WebXR input profile id`);
+  }
+}
+
+await writeFile(join(outDir, 'profilesList.json'), `${JSON.stringify(listing, null, 2)}\n`);
 
 await cp(
   join(root, 'node_modules', '@webxr-input-profiles', 'assets', 'LICENSE.md'),
-  join(target, 'LICENSE.md'),
+  join(outDir, 'LICENSE.md'),
 );
 
 await writeFile(
-  join(target, 'README.md'),
+  join(outDir, 'README.md'),
   [
     '# Bundled WebXR controller profiles',
     '',
@@ -59,13 +100,21 @@ await writeFile(
     `Copied from \`@webxr-input-profiles/assets\` (MIT). Profiles: ${PROFILES.join(', ')}.`,
     '',
     'These are served from this origin so a headset never fetches controller',
-    'models from a third-party CDN at session start.',
+    'models from a third-party CDN at session start. `profilesList.json` is',
+    'rebuilt to advertise only ids that resolve to files present here.',
     '',
   ].join('\n'),
 );
 
-const listing = JSON.parse(await readFile(join(target, 'profilesList.json'), 'utf-8'));
+// The failure this guards against is silent on the device, so prove it here:
+// every advertised id must resolve to a file that exists.
+for (const [id, { path: relative }] of Object.entries(listing)) {
+  if (!existsSync(join(outDir, relative))) {
+    throw new Error(`profile "${id}" points at ${relative}, which is not on disk`);
+  }
+}
+
 console.log(
-  `Copied ${PROFILES.length} controller profile(s) into public/webxr-profiles ` +
-    `(listing has ${Object.keys(listing).length} entries).`,
+  `Copied ${PROFILES.length} controller profile(s) into public/webxr-profiles; ` +
+    `listing advertises ${Object.keys(listing).length} id(s), all resolving to bundled files.`,
 );

@@ -5,7 +5,17 @@
  * from, so the floor a user can reach always matches the floor they can see.
  * Deliberately plain: distinct silhouette, calm surfaces, no real-time shadows
  * and no postprocessing, leaving the mnemonic props as the loud things.
+ *
+ * Nothing here may be coplanar with the floor. The wall and skirting boxes
+ * originally had their bottom faces at exactly y=0, which z-fought the floor
+ * plane around the whole perimeter — invisible on a desktop GPU, a flickering
+ * floor on a Quest 3. Both now sink below the floor, and the floor decals use
+ * polygon offset rather than millimetre gaps, which depend on depth-buffer
+ * precision we do not control.
  */
+
+/** How far wall geometry extends below the floor, out of sight. */
+const SINK = 0.25;
 
 import { useMemo } from 'react';
 import { BackSide, DoubleSide } from 'three';
@@ -35,20 +45,31 @@ export function RoomShell({ room }: { room: Room }) {
       {gridLines.map((x) => (
         <mesh key={`x${x}`} rotation={[-Math.PI / 2, 0, 0]} position={[x, 0.002, 0]}>
           <planeGeometry args={[0.012, d]} />
-          <meshBasicMaterial color={palette.floorLine} />
+          <meshBasicMaterial
+            color={palette.floorLine}
+            polygonOffset
+            polygonOffsetFactor={-1}
+            polygonOffsetUnits={-1}
+          />
         </mesh>
       ))}
       {gridLines.map((z) => (
         <mesh key={`z${z}`} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.002, z]}>
           <planeGeometry args={[w, 0.012]} />
-          <meshBasicMaterial color={palette.floorLine} />
+          <meshBasicMaterial
+            color={palette.floorLine}
+            polygonOffset
+            polygonOffsetFactor={-1}
+            polygonOffsetUnits={-1}
+          />
         </mesh>
       ))}
 
       {/* Walls face inwards; BackSide keeps them from hiding the room when the
-          desktop camera orbits outside. */}
-      <mesh position={[0, h / 2, 0]}>
-        <boxGeometry args={[w, h, d]} />
+          desktop camera orbits outside. The box extends below the floor so its
+          bottom face is not coplanar with it; the ceiling stays at `h`. */}
+      <mesh position={[0, (h - SINK) / 2, 0]}>
+        <boxGeometry args={[w, h + SINK, d]} />
         <meshStandardMaterial color={theme.wall} side={BackSide} roughness={0.95} metalness={0} />
       </mesh>
 
@@ -62,9 +83,10 @@ export function RoomShell({ room }: { room: Room }) {
         <meshBasicMaterial color={palette.wallTrim} side={DoubleSide} />
       </mesh>
 
-      {/* Skirting gives the floor/wall join a readable edge at headset distance. */}
-      <mesh position={[0, 0.08, 0]}>
-        <boxGeometry args={[w - 0.01, 0.16, d - 0.01]} />
+      {/* Skirting gives the floor/wall join a readable edge at headset distance.
+          It sinks below the floor for the same reason the walls do. */}
+      <mesh position={[0, (0.16 - SINK) / 2, 0]}>
+        <boxGeometry args={[w - 0.01, 0.16 + SINK, d - 0.01]} />
         <meshStandardMaterial color={palette.wallTrim} side={BackSide} roughness={0.95} metalness={0} />
       </mesh>
     </group>
